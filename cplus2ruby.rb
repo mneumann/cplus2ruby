@@ -83,7 +83,20 @@ module Cplus2Ruby
   # Global code
   #
   def self.<<(code)
+    model.code << "\n"
     model.code << code
+    model.code << "\n"
+  end
+
+  def self.include(header)
+    case header
+    when Symbol
+      self << %{#include <#{header}>}
+    when String
+      self << %{#include "#{header}"}
+    else
+      raise ArgumentError
+    end
   end
 
   def self.model
