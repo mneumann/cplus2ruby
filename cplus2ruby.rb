@@ -142,7 +142,6 @@ module Cplus2Ruby
   end
 
   def property(name, type=Object, options={})
-    type = type.to_s if type.is_a?(Symbol)
     Cplus2Ruby.model[self].add_property(name, type, options)
   end
 
@@ -255,6 +254,8 @@ class Cplus2Ruby::Entity
     klass.class_eval "include ::Cplus2Ruby"
   end
 end
+
+Cplus2Ruby_ = Cplus2Ruby::Entity 
 
 class Cplus2Ruby::Model
   attr_reader :type_aliases, :type_map, :code
@@ -400,6 +401,7 @@ class Cplus2Ruby::Model::ModelClass
   end
 
   def add_property(name, type, options)
+    type = type.to_s if type.is_a?(Symbol)
     @properties << Cplus2Ruby::Model::ModelProperty.new(name, type, options) 
   end
 
@@ -412,7 +414,14 @@ class Cplus2Ruby::Model::ModelClass
   end
 
   def add_method(name, params, body, options)
-    @methods << Cplus2Ruby::Model::ModelMethod.new(self, name, params, body, options)
+    # Convert Symbols to strings for types
+    nparams = Hash.new
+    params.each {|k,v|
+      v = v.to_s if v.is_a?(Symbol)
+      nparams[k] = v
+    }
+
+    @methods << Cplus2Ruby::Model::ModelMethod.new(self, name, nparams, body, options)
   end
 end
 
