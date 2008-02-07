@@ -247,7 +247,13 @@ module Cplus2Ruby
     end
     require "#{dir}/#{mod}.#{Config::CONFIG['DLEXT']}"
   end
+end
 
+class Cplus2Ruby::Entity
+  def self.inherited(klass)
+    super
+    klass.class_eval "include ::Cplus2Ruby"
+  end
 end
 
 class Cplus2Ruby::Model
@@ -740,10 +746,10 @@ class Cplus2Ruby::CodeGenerator
   def class_declaration(model_class, out)
     out << "struct #{model_class.klass.name}"
     sc = model_class.klass.superclass
-    if sc != Object
-      sc = sc.name
-    else
+    if sc == Object or sc == Cplus2Ruby::Entity
       sc = "RubyObject"
+    else
+      sc = sc.name
     end
     out << " : #{sc}\n" if sc
 
