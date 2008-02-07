@@ -99,6 +99,10 @@ module Cplus2Ruby
     end
   end
 
+  def self.settings(h={})
+    model.settings(h)
+  end
+
   def self.model
     @model ||= Cplus2Ruby::Model.new
   end
@@ -254,8 +258,14 @@ class Cplus2Ruby::Model
     @type_aliases = OHash.new
     @type_map = get_type_map()
     @code = ""
+    @settings = {:substitute_iv_ats => true}
 
     add_type_alias Object => 'VALUE'
+  end
+
+  def settings(h={})
+    @settings.update(h)
+    @settings
   end
 
   def add_type_alias(h)
@@ -449,12 +459,22 @@ class Cplus2Ruby::CodeGenerator
     @model = model
   end
 
-  def write(mod_name)
+  # 
+  # Allows preprocessing of generated code.
+  #
+  def write_out(file, &block)
+    block.call(str="")
+    if @model.settings()[:substitute_iv_ats] 
+      str.gsub!('@', 'this->')
+    end
+    File.open(file, 'w+') {|out| out << str}
+  end
 
+  def write(mod_name)
     #
     # mod_name.h
     #
-    File.open(mod_name + ".h", 'w+') do |out| 
+    write_out(mod_name + ".h") do |out|
       header(out)
       type_aliases(out)
       out << @model.code
@@ -467,7 +487,7 @@ class Cplus2Ruby::CodeGenerator
     #
     # mod_name.cc
     #
-    File.open(mod_name + ".cc", 'w+') do |out| 
+    write_out(mod_name + ".cc") do |out| 
       out << %{#include "#{mod_name}.h"\n\n}
       class_bodies(out)
     end
@@ -475,7 +495,7 @@ class Cplus2Ruby::CodeGenerator
     #
     # mod_name_wrap.cc
     #
-    File.open(mod_name + "_wrap.cc", 'w+') do |out| 
+    write_out(mod_name + "_wrap.cc") do |out| 
       out << %{#include "#{mod_name}.h"\n\n}
 
       ruby_method_wrappers(out)
