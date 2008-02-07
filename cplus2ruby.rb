@@ -874,12 +874,6 @@ struct RubyObject {
     __obj__ = Qnil;
   }
 
-  /* FIXME: ??? */
-  void *operator new (size_t num_bytes)
-  {
-    return malloc(num_bytes + 12);
-  }
-
   virtual ~RubyObject() {};
 
   static void __free(void *ptr) {
@@ -890,7 +884,7 @@ struct RubyObject {
     ((RubyObject*)ptr)->__mark__();
   }
 
-  virtual void __free__() { free(this); }
+  virtual void __free__() { delete this; }
   virtual void __mark__() { }
 };
 EOS
