@@ -191,6 +191,8 @@ module Cplus2Ruby
     Cplus2Ruby.model[self].add_method(name, params, body, options)
   end 
 
+  alias method_c method
+
   def helper_header(body)
     Cplus2Ruby.model[self].add_helper_header(body)
   end
