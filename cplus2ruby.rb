@@ -8,6 +8,13 @@
 # License::   Released under the same terms as Ruby itself.
 #
 
+#
+# Limitations:
+#
+# Modules are special in Cplus2Ruby, because they have to be "flat"
+# and have to be close when they are mixed in.
+#
+
 if RUBY_VERSION >= "1.9"
   OHash = Hash
 else
@@ -113,15 +120,25 @@ module Cplus2Ruby
 
   #
   # Called when Cplus2Ruby is included in another module or a class.
+  # If a module is included in another module, then the module
+  # to be included must be closed.
   #
-  def self.append_features(mod)
-    super
-    mod.extend(self)
-    Cplus2Ruby.model[mod] # this will register the class
+
+  def self.append_features(mod, this=nil)
+    super(mod)
+    mod.extend(this || self)
     # also register a subclass
     def mod.inherited(k)
       Cplus2Ruby.model[k]
     end
+    # transitive append_features
+    def mod.append_features(k, this=nil)
+      Cplus2Ruby.append_features(k, this||self)
+    end
+    #Cplus2Ruby.model[mod] # this will register the class
+
+    # append all properties of "self" to mod.
+    Cplus2Ruby.model[mod].append(Cplus2Ruby.model[this || self])
   end
 
   ###################################
@@ -295,7 +312,10 @@ class Cplus2Ruby::Model
   end
 
   def each_model_class(&block)
-    @model_classes.each_value(&block)
+    @model_classes.each_value do |mk|
+      next if mk.is_module?
+      block.call(mk)
+    end
   end
 
   # 
@@ -396,6 +416,18 @@ class Cplus2Ruby::Model::ModelClass
     @helper_headers = []
     @helper_codes = []
     @virtuals = []
+  end
+
+  def append(mk)
+    @properties.push(*mk.properties)
+    @methods.push(*mk.methods)
+    @helper_headers.push(*mk.helper_headers)
+    @helper_codes.push(*mk.helper_codes)
+    @virtuals.push(*mk.virtuals)
+  end
+
+  def is_module?
+    !@klass.is_a?(Class)
   end
 
   def add_virtual(virt)
