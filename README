@@ -1,0 +1,96 @@
+---------------------------------------------------------
+Cplus2Ruby - Gluing C++ and Ruby together in an OO manner
+---------------------------------------------------------
+
+COPYRIGHT
+
+  Copyright (c) 2007, 2008 by Michael Neumann (mneumann@ntecs.de).
+  All rights reserved.
+
+LICENSE
+
+  Ruby License.
+
+ABOUT
+
+  With Cplus2Ruby you can define your own C++ classes or C structures
+  from within Ruby and wrap them in a Ruby class. 
+  Cplus2Ruby will automatically generate getter and setter methods for
+  properties, as well as wrapper functions for calling your C++ methods
+  from within Ruby. 
+
+  The purpose is speed, because accessing instance variables in Ruby is
+  quite slow compared to accessing an C++ attribute. Also, C++ methods can
+  call each other directly, without using Ruby's slow method dispatch.
+  This is *much* faster!
+
+  I started to write Cplus2Ruby (it was actually called CplusRuby at
+  that time, because it was based on C, not C++) to implement a
+  high-performance pulsed neural network simulator. My existing C++
+  implementation suffered from - well - C++ :). This enabled me to write
+  the core algorithms in C or C++ and do all the other non
+  performance-critical tasks in Ruby.
+
+EXAMPLE
+
+  Take a look at the following example. You should also take a look
+  at the generated C++ source file (work/*.cc). Note that properties
+  are actually members of a C++ class, not instance variables, and as
+  such, their access from C++ is very fast. As calling a method is
+  quite slow in Ruby, method defined in C++ ("method") can be called
+  directly from C++, which again is very fast! 
+
+  Note that the example below uses Ruby 1.9 syntax for hashes and as
+  such does not run with Ruby 1.8. Hashes in Ruby 1.9 maintain order,
+  with is not true in Ruby 1.8, so that you have to replace a single
+  Hash that describes the signature of a C++ method with multiple Hashes,
+  one for each argument:
+
+    # Ruby >= 1.9
+    {at: 'float', weight: 'float'}
+
+    # Ruby < 1.9
+    {:at => 'float'}, {:weight => 'float'}
+
+  The example:
+
+    require 'cplus2ruby'
+
+    class NeuralEntity < CplusRuby_
+      property :id
+    end
+
+    class Neuron < NeuralEntity
+      property :potential,        :float
+      property :last_spike_time,  :float
+      property :pre_synapses
+
+      method :stimulate, {at: 'float', weight: 'float'}, %{
+        /* this is C code */
+        @potential += at*weight;
+      }
+
+      def initialize
+        self.pre_synapses = []
+      end
+    end
+
+    # generate C file, compile it and load the .so
+    CplusRuby.compile_and_load("work/neural")
+
+    if __FILE__ == $0
+      n = Neuron.new
+      n.id = "n1"
+      n.potential = 1.0
+      n.stimulate(1.0, 2.0)
+      p n.potential # => 3.0
+    end
+
+NOTE
+
+  You can disable the substitution of "@" to "this->" in the generated
+  C++ source code with:
+
+      Cplus2Ruby.settings :substitute_iv_ats => false
+
+END 
