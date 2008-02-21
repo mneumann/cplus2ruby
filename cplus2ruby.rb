@@ -12,7 +12,7 @@
 # Limitations:
 #
 # Modules are special in Cplus2Ruby, because they have to be "flat"
-# and have to be close when they are mixed in.
+# and have to be closed at the time they are mixed in.
 #
 
 if RUBY_VERSION >= "1.9"
