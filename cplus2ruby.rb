@@ -449,7 +449,7 @@ class Cplus2Ruby::Model::ModelClass
 
   def add_method(name, params, body, options)
     # Convert Symbols to strings for types
-    nparams = Hash.new
+    nparams = OHash.new
     params.each {|k,v|
       v = v.to_s if v.is_a?(Symbol)
       nparams[k] = v
