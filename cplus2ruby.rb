@@ -133,6 +133,7 @@ module Cplus2Ruby
     end
     # transitive append_features
     def mod.append_features(k, this=nil)
+      super(k)
       Cplus2Ruby.append_features(k, this||self)
     end
     #Cplus2Ruby.model[mod] # this will register the class
