@@ -1,5 +1,3 @@
-module Cplus2Ruby; end
-
 class Cplus2Ruby::Property; end
 class Cplus2Ruby::Method; end
 
@@ -201,10 +199,14 @@ module Cplus2Ruby
     model.add_type_alias(h)
   end
 
-  def self.compile(file, cflags="", libs="")
-    require 'cplus2ruby/compiler'
-    Cplus2Ruby::Compiler.new(self.model).compile(file, cflags, libs)
+  def self.startup(*args, &block)
+    Cplus2Ruby::Compiler.new(self.model).startup(*args, &block)
   end
+
+  def self.compile(*args)
+    Cplus2Ruby::Compiler.new(self.model).compile(*args)
+  end
+
 end
 
 module Cplus2Ruby::Entity
