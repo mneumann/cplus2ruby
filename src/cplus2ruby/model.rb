@@ -203,9 +203,7 @@ module Cplus2Ruby
 
   def self.compile(file, cflags="", libs="")
     require 'cplus2ruby/compiler'
-    comp = Cplus2Ruby::Compiler.new(self.model)
-    comp.generate_code(file)
-    comp.compile(file, cflags, libs)
+    Cplus2Ruby::Compiler.new(self.model).compile(file, cflags, libs)
   end
 end
 

@@ -3,8 +3,8 @@ require 'cplus2ruby/code_generator'
 class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
   DEFAULT_INCLUDES = [:"stdlib.h", "ruby.h"] 
 
-  def write_RubyObject(out)
-    pretty out, %[ 
+  def gen_rubyObject
+    %[
       struct RubyObject {
         VALUE __obj__;
         RubyObject() { __obj__ = Qnil; }
@@ -17,64 +17,66 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
     ]
   end
 
-  def write_includes(includes, out)
-    includes.each do |inc|
-      case inc
-      when Symbol
-        out << %{#include <#{inc}>\n}
-      when String
-        out << %{#include "#{inc}"\n}
-      else
-        raise "write_includes: invalid header"
-      end
+  def gen_include(inc)
+    "#include " + 
+    case inc
+    when Symbol
+      %{<#{inc}>}
+    when String
+      %{"#{inc}"}
+    else
+      raise ArgumentError, "invalid header"
     end
   end
 
-  def write_type_alias(from, to, out)
-    out << "typedef #{to} #{from};\n"
+  def gen_includes(includes)
+    includes.map {|inc| gen_include(inc) }.join("\n")
+  end
+
+  def gen_type_alias(from, to)
+    "typedef #{to} #{from};"
   end
 
   # 
   # Type aliases is a hash in the form from => to.
   #
-  def write_type_aliases(type_aliases, out)
-    type_aliases.each do |from, to|
-      write_type_alias(from, to, out)
-    end
+  def gen_type_aliases(type_aliases)
+    type_aliases.map {|from, to| gen_type_alias(from, to) }.join("\n")
   end
 
   #
   # +kind+ is either :free or :mark
   #
-  def write_free_or_mark_method(klass, kind, out)
+  def gen_free_or_mark_method(klass, kind)
     stmts = stmts_for_free_or_mark_method(klass, kind)
-    pretty_body_unless_empty out, stmts, %[
+    return "" if stmts.empty?
+    %[
       void
       #{klass.name}::__#{kind}__()
       {
-        %%BODY%%
+        #{stmts.join(";\n")};
         super::__#{kind}__();
       }
     ]
   end
 
-  def write_constructor_impl(klass, out)
+  def gen_constructor(klass)
     stmts = []
     all_properties_of(klass) do |name, options|
       init = @model.lookup_type_entry(:init, options, options[:type])
       stmts << @model.var_assgn("this->#{name}", init) unless init.nil?
     end
-
-    pretty_body_unless_empty out, stmts, %[
+    return "" if stmts.empty?
+    %[
       #{klass.name}::#{klass.name}()
       {
-        %%BODY%%
+        #{stmts.join(";\n")};
       }
     ]
   end
 
-  def write_property(name, options, out)
-    out << @model.var_decl(options[:type], name) 
+  def gen_property(name, options)
+    @model.var_decl(options[:type], name)
   end
 
   #
@@ -83,10 +85,11 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
   #
   # Doesn't include the semicolon at the end.
   #
-  def write_method_sig(klassname, name, options, out)
+  def gen_method_sig(klassname, name, options)
     args = options[:arguments].dup
     returns = args.delete(:returns) || "void"
 
+    out = ""
     out << "static " if options[:static] 
     out << "inline " if options[:inline]
     out << "virtual " if options[:virtual]
@@ -97,17 +100,20 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
 
     out << "#{klassname}::" if klassname
     out << "#{name}(#{s})"
+    return out
   end
 
-  def write_method_body(options, out)
-    pretty_body out, options[:body] || "", %[
-      {
-        %%BODY%%
-      }
-    ]
+  def gen_method_body(options)
+    "{\n" + (options[:body] || "") + "}\n"
   end
 
-  def write_class_declaration(klass, out)
+  def gen_method(klassname, name, options, include_body)
+    str = gen_method_sig(klassname, name, options)
+    str << gen_method_body(options) if include_body
+    str
+  end
+
+  def gen_class_declaration(klass)
     if klass.superclass == Object
       sc = "RubyObject"
     else
@@ -127,24 +133,17 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
     #
     # Write out property declarations and method signatures.
     #
-    body = ""
+    stmts = []
 
-    all_properties_of(klass) do |name, options|
-      write_property(name, options, body)
-      body << ";\n"
-    end
+    all_properties_of(klass) {|name, options| 
+      stmts << gen_property(name, options)
+    }
 
-    all_methods_of(klass) do |name, options|
-      write_method_sig(nil, name, options, body)
-      if options[:inline]
-        body << "\n"
-        write_method_body(options, body)
-      else
-        body << ";\n"
-      end
-    end
-     
-    pretty_body out, body, %[
+    all_methods_of(klass) {|name, options|
+      stmts << gen_method(nil, name, options, options[:inline])
+    }
+       
+    %[
       struct #{klass.name} : #{sc}
       {
         typedef #{sc} super;
@@ -154,33 +153,34 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
         #{m[:free]}
         #{m[:mark]}
         
-        %%BODY%%
+        #{stmts.join("; \n")};
       };
     ]
   end
 
-  def write_class_impl(klass, out)
+  def gen_class_impl(klass)
     # FIXME: helper_codes
 
-    write_constructor_impl(klass, out)
+    stmts = [] 
+    stmts << gen_constructor(klass)
 
-    [:free, :mark].each {|kind|
-      write_free_or_mark_method(klass, kind, out)
+    [:free, :mark].each {|kind| 
+      stmts << gen_free_or_mark_method(klass, kind)
     }
 
     all_methods_of(klass) do |name, options|
       next if options[:inline]
-      write_method_sig(klass.name, name, options, out)
-      out << "\n"
-      write_method_body(options, out)
+      stmts << gen_method(klass.name, name, options, true)
     end
+
+    stmts.join("\n")
   end
 
-
-  def write_header_file(out)
-    write_includes(DEFAULT_INCLUDES + @model.includes, out)
-    write_RubyObject(out)
-    write_type_aliases(@model.type_aliases, out)
+  def gen_header_file
+    out = ""
+    out << gen_includes(DEFAULT_INCLUDES + @model.includes)
+    out << gen_rubyObject()
+    out << gen_type_aliases(@model.type_aliases)
     out << @model.code
 
     # forward class declarations
@@ -194,29 +194,29 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
     # class declarations
     #
     @model.entities_ordered.each do |klass|
-      write_class_declaration(klass, out)
+      out << gen_class_declaration(klass)
     end
+
+    return out
   end
 
-  def write_impl_file(mod_name, out)
+  def gen_impl_file(mod_name)
+    out = ""
     out << %{#include "#{mod_name}.h"\n\n}
 
     #
     # class declarations
     #
     @model.entities_ordered.each do |klass|
-      write_class_impl(klass, out)
+      out << gen_class_impl(klass)
     end
+
+    return out
   end
 
-  def create_files(mod_name)
-    write_out(mod_name + ".h") {|out|
-      write_header_file(out)
-    }
-
-    write_out(mod_name + ".cc") {|out|
-      write_impl_file(mod_name, out)
-    }
+  def write_files(mod_name)
+    write_out(mod_name + ".h", gen_header_file())
+    write_out(mod_name + ".cc", gen_impl_file(mod_name))
   end
 
   protected

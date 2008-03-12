@@ -1,7 +1,5 @@
 class Cplus2Ruby::CodeGenerator
   require 'fileutils'
-  require 'cplus2ruby/pretty_output'
-  include Cplus2Ruby::PrettyOutput
 
   def initialize(model=Cplus2Ruby.model)
     @model = model
@@ -10,13 +8,12 @@ class Cplus2Ruby::CodeGenerator
   # 
   # Allows preprocessing of generated code.
   #
-  def write_out(file, &block)
-    block.call(str="")
+  def write_out(file, str)
     if @model.settings()[:substitute_iv_ats] 
       str.gsub!('@', 'this->')
     end
     FileUtils.mkdir_p(File.dirname(file))
-    File.open(file, 'w+') {|out| out << str}
+    File.open(file, 'w+') {|out| out.puts str}
   end
 
   def all_properties_of(klass)

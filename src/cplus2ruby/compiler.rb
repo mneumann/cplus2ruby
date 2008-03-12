@@ -6,11 +6,11 @@ class Cplus2Ruby::Compiler
     @model = model
   end
 
-  def generate_code(mod_name)
+  def write_files(mod_name)
     cpp_cg = Cplus2Ruby::CppCodeGenerator.new(@model)
     wrap_cg = Cplus2Ruby::WrapperCodeGenerator.new(@model)
-    cpp_cg.create_files(mod_name)
-    wrap_cg.create_files(mod_name)
+    cpp_cg.write_files(mod_name)
+    wrap_cg.write_files(mod_name)
   end
 
   #
@@ -31,7 +31,7 @@ class Cplus2Ruby::Compiler
     make = RUBY_PLATFORM.match('mswin') ? 'nmake' : 'make'
 
     Dir.chdir(dir) do
-      generate_code(mod)
+      write_files(mod)
       system("#{make} clean") if File.exist?('Makefile')
 
       pid = fork do
