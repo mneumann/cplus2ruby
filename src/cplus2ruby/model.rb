@@ -1,23 +1,26 @@
+require 'facets/annotations'
+require 'facets/orderedhash'
+require 'cplus2ruby/typing'
+
 class Cplus2Ruby::Property; end
 class Cplus2Ruby::Method; end
 
 class Cplus2Ruby::Model
-  require 'facets/orderedhash'
-
-  attr_reader :type_aliases
-  attr_reader :type_map
+  attr_reader :typing
   attr_reader :code
   attr_reader :includes
 
   def initialize
-    @type_aliases = OrderedHash.new
-    @type_map = default_type_map() 
+    @typing = Cplus2Ruby::Typing.new
     @code = ""
     @includes = []
-
     @settings = default_settings()
+  end
 
-    add_type_alias Object => 'VALUE'
+  def finish!
+    entities.each do |klass|
+      @typing.add_object_type(klass)
+    end
   end
 
   def entities
@@ -48,108 +51,7 @@ class Cplus2Ruby::Model
     @settings
   end
 
-  #
-  # Add a type alias. Also modifies type map.
-  #
-  def add_type_alias(h)
-    @type_aliases.update(h)
-    h.each do |from, to|
-      @type_map[from] = @type_map[to]
-    end
-  end
-
-  def get_type_entry(type)
-    @type_map[type] || nil 
-  end
-
-  def lookup_type_entry(attribute, first, type)
-    val = first[attribute]
-    if val.nil? 
-      if x = get_type_entry(type)
-        val = x[attribute] 
-      end
-    end
-    return val
-  end
-
-  # 
-  # Returns a C++ declaration
-  #
-  def var_decl(type, name)
-    if entry = get_type_entry(type)
-      entry[:ctype].gsub("%s", name.to_s)
-    # FIXME type.to_s
-    elsif type.to_s.include?("%s")
-      type.gsub("%s", name.to_s)
-    else
-      "#{type} #{name}"
-    end
-  end
-
-  def var_assgn(name, value)
-    raise ArgumentError if value.nil?
-    if value.is_a?(String) and value.include?('%s')
-      value.gsub('%s', name)
-    else
-      "#{name} = #{value}"
-    end
-  end
-
-=begin
-  def new_model_class_for(klass)
-    mk = Cplus2Ruby::ModelClass.new(klass)
-    @type_map[mk.klass] = object_type_map(mk.klass.name)
-    return mk
-  end
-=end
-
   protected
-
-  def default_type_map
-    { 
-      'VALUE' => {
-        :init   => 'Qnil',
-        :mark   => 'rb_gc_mark(%s)',
-        :ruby2c => '%s',
-        :c2ruby => '%s',
-        :ctype  => 'VALUE %s' 
-      },
-      'float' => {
-        :init   => 0.0,
-        :ruby2c => '(float)NUM2DBL(%s)',
-        :c2ruby => 'rb_float_new((double)%s)',
-        :ctype  => 'float %s'
-      },
-      'double' => {
-        :init   => 0.0,
-        :ruby2c => '(double)NUM2DBL(%s)',
-        :c2ruby => 'rb_float_new(%s)',
-        :ctype  => 'double %s'
-      },
-      'int' => {
-        :init   => 0,
-        :ruby2c => '(int)NUM2INT(%s)',
-        :c2ruby => 'INT2NUM(%s)',
-        :ctype  => 'int %s'
-      },
-      'unsigned int' => {
-        :init   => 0,
-        :ruby2c => '(unsigned int)NUM2INT(%s)',
-        :c2ruby => 'INT2NUM(%s)',
-        :ctype  => 'unsigned int %s'
-      },
-      'bool' => { 
-        :init   => false,
-        :ruby2c => '(RTEST(%s) ? true : false)',
-        :c2ruby => '(%s ? Qtrue : Qfalse)',
-        :ctype  => 'bool %s'
-      },
-      'void' => {
-        :c2ruby => 'Qnil',
-        :ctype  => 'void'
-      }
-    }
-  end
 
   def default_settings
     {
@@ -157,23 +59,9 @@ class Cplus2Ruby::Model
     }
   end
 
-  def object_type_map(type)
-    {
-      :init   => "NULL",
-      :mark   => "if (%s) rb_gc_mark(%s->__obj__)",
-      :ruby2c => "(NIL_P(%s) ? NULL : (#{type}*)DATA_PTR(%s))",
-      :c2ruby => "(%s ? %s->__obj__ : Qnil)", 
-      :ctype  => "#{type} *%s",
-      :ruby2c_checktype => "if (!NIL_P(%s)) Check_Type(%s, T_DATA)"
-    }
-  end
-
 end
 
 module Cplus2Ruby
-  require 'facets/annotations'
-  require 'facets/orderedhash'
-
   # 
   # Global code
   #
@@ -196,14 +84,16 @@ module Cplus2Ruby
   end
 
   def self.add_type_alias(h)
-    model.add_type_alias(h)
+    h.each {|from, to| model.typing.alias_entry(from, to)}
   end
 
   def self.startup(*args, &block)
+    self.model.finish!
     Cplus2Ruby::Compiler.new(self.model).startup(*args, &block)
   end
 
   def self.compile(*args)
+    self.model.finish!
     Cplus2Ruby::Compiler.new(self.model).compile(*args)
   end
 

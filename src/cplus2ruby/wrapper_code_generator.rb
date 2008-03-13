@@ -35,14 +35,6 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
      gen_property_setter(klass, name, options)].join
   end
 
-  def gen_checktype(name, type)
-    if checktype = @model.get_type_entry(type)[:ruby2c_checktype]
-      checktype.gsub('%s', name.to_s) + ";\n"
-    else
-      ""
-    end
-  end
-
   #
   # kind is one of :set, :get, :wrap
   #
@@ -63,7 +55,7 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
 
     # declare C++ return value
     if returns != 'void'
-      out << @model.var_decl(returns, '__res__') + ";\n"
+      out << @model.typing.var_decl(returns, '__res__') + ";\n"
     end
     
     # declare C++ object reference
@@ -75,10 +67,10 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
     out << "__cobj__ = (#{klass.name}*) DATA_PTR(__self__);\n"
 
     # check argument types
-    out << args.map {|n, t| gen_checktype(n, t) }.join
+    out << args.map {|n, t| @model.typing.convert(t, n.to_s, :ruby2c_checktype) + ";\n" }.join
 
     # call arguments
-    call_args = args.map {|n, t| convert_ruby2c(t, n.to_s)}
+    call_args = args.map {|n, t| @model.typing.convert(t, n.to_s, :ruby2c)}
 
     # build method call
     out << "__res__ = " if returns != 'void'
@@ -95,7 +87,7 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
     end
 
     # convert return value
-    retval = convert_c2ruby(returns, '__res__')
+    retval = @model.typing.convert(returns, '__res__', :c2ruby)
 
     out << "return #{retval};\n"
     out << "}\n"
@@ -122,7 +114,7 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
       end
 
       all_properties_of(klass) do |name, options|
-        next unless can_convert_type?(options[:type])
+        next unless @model.typing.can_convert?(options[:type])
 
         # getter
         out << %{  rb_define_method(klass, "#{name}", } 
@@ -166,27 +158,8 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
 
   protected
 
-  # 
-  # Return true if Ruby <-> C conversion for this type is possible
-  #
-  def can_convert_type?(type)
-    @model.get_type_entry(type) ? true : false
-  end
-
-  def convert_c2ruby(type, var)
-    convert(type, var, :c2ruby)
-  end
-
-  def convert_ruby2c(type, var)
-    convert(type, var, :ruby2c)
-  end
-
-  def convert(type, var, kind)
-    @model.get_type_entry(type)[kind].gsub('%s', var)
-  end
-
   def args_convertable?(args)
-    args.all? {|_, type| can_convert_type?(type) }
+    args.all? {|_, type| @model.typing.can_convert?(type) }
   end
 
   def arity(args)

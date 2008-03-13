@@ -63,8 +63,8 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
   def gen_constructor(klass)
     stmts = []
     all_properties_of(klass) do |name, options|
-      init = @model.lookup_type_entry(:init, options, options[:type])
-      stmts << @model.var_assgn("this->#{name}", init) unless init.nil?
+      init = @model.typing.lookup_entry(:init, options, options[:type])
+      stmts << @model.typing.var_assgn("this->#{name}", init) unless init.nil?
     end
     return "" if stmts.empty?
     %[
@@ -76,7 +76,7 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
   end
 
   def gen_property(name, options)
-    @model.var_decl(options[:type], name)
+    @model.typing.var_decl(options[:type], name)
   end
 
   #
@@ -93,10 +93,10 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
     out << "static " if options[:static] 
     out << "inline " if options[:inline]
     out << "virtual " if options[:virtual]
-    out << @model.var_decl(returns, "")
+    out << @model.typing.var_decl(returns, "")
     out << "\n"
 
-    s = args.map {|aname, atype| @model.var_decl(atype, aname) }.join(", ")
+    s = args.map {|aname, atype| @model.typing.var_decl(atype, aname) }.join(", ")
 
     out << "#{klassname}::" if klassname
     out << "#{name}(#{s})"
@@ -180,7 +180,7 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
     out = ""
     out << gen_includes(DEFAULT_INCLUDES + @model.includes)
     out << gen_rubyObject()
-    out << gen_type_aliases(@model.type_aliases)
+    out << gen_type_aliases(@model.typing.aliases)
     out << @model.code
 
     # forward class declarations
@@ -224,7 +224,7 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
   def stmts_for_free_or_mark_method(klass, kind)
     stmts = []
     all_properties_of(klass) do |name, options|
-      if free_mark = @model.lookup_type_entry(kind, options, options[:type])
+      if free_mark = @model.typing.lookup_entry(kind, options, options[:type])
         stmts << free_mark.gsub('%s', "this->#{name}") # FIXME: use a common replacement function
       end
     end
