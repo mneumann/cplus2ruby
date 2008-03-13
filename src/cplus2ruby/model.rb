@@ -136,6 +136,27 @@ module Cplus2Ruby::Entity
   # method :name, {hash}, {hash}, ..., {hash}, body, hash 
   #
   def method(name, *args)
+    options = parse_method_args(args)
+    ann! name, Cplus2Ruby::Method, options 
+  end 
+
+  def static_method(name, *args)
+    options = parse_method_args(args)
+    options[:static] = true
+    ann! name, Cplus2Ruby::Method, options 
+  end
+
+  alias method_c method
+
+  def virtual(*virtuals)
+    virtuals.each do |name|
+      ann! name, :virtual => true
+    end
+  end
+
+  protected
+
+  def parse_method_args(args)
     params = OrderedHash.new
     body = nil
     options = {}
@@ -168,16 +189,10 @@ module Cplus2Ruby::Entity
     options[:body] ||= body 
     options[:arguments] ||= params
 
-    ann! name, Cplus2Ruby::Method, options 
-  end 
-
-  alias method_c method
-
-  def virtual(*virtuals)
-    virtuals.each do |name|
-      ann! name, :virtual => true
-    end
+    return options
   end
+
+
 end
 
 class Module
