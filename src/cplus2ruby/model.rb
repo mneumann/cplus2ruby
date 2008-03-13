@@ -10,11 +10,16 @@ class Cplus2Ruby::Model
   attr_reader :code
   attr_reader :includes
 
+  def next_order_cnt
+    @order_cnt += 1
+  end
+
   def initialize
     @typing = Cplus2Ruby::Typing.new
     @code = ""
     @includes = []
     @settings = default_settings()
+    @order_cnt = 0
   end
 
   def finish!
@@ -31,14 +36,35 @@ class Cplus2Ruby::Model
     entities
   end
 
+  def entity_usage(klass, other)
+    usage_cnt = 0
+    klass.local_annotations.each do |name, opts|
+      usage_cnt += 1 if opts[:arguments] and opts[:arguments].values.include?(other)
+      usage_cnt += 1 if opts[:type] and opts[:type] == other 
+    end
+    usage_cnt
+  end
+
   def entities_ordered
     entities().sort {|a, b|
       if a.ancestors.include?(b)
+        # a 'after' b (a > b)
         1
       elsif b.ancestors.include?(a)
         -1
       else
-        0
+        ea = entity_usage(a, b)
+        eb = entity_usage(b, a)
+
+        if ea > 0 and eb == 0
+          -1
+        elsif eb > 0 and ea == 0 
+          1
+        else
+          ao = (a.heritage(:__options__) || {})[:order] || 0
+          bo = (b.heritage(:__options__) || {})[:order] || 0
+          ao <=> bo
+        end
       end
     }
   end
@@ -100,21 +126,6 @@ module Cplus2Ruby
 end
 
 module Cplus2Ruby::Entity
-  def public(*args)
-    # FIXME
-    super
-  end
-
-  def protected(*args)
-    # FIXME
-    super
-  end
-
-  def private(*args)
-    # FIXME
-    super
-  end
-
   def property(name, type=Object, options={})
     raise ArgumentError if options[:type]
     options[:type] = type
@@ -167,23 +178,13 @@ module Cplus2Ruby::Entity
       ann! name, :virtual => true
     end
   end
-
-=begin
-  def helper_header(body)
-    for which class.
-    ann! 
-    Cplus2Ruby.model[self].add_helper_header(body)
-  end
-
-  def helper_code(body)
-    Cplus2Ruby.model[self].add_helper_code(body)
-  end
-=end
 end
 
 class Module
-  def cplus2ruby
+  def cplus2ruby(hash={})
     include Cplus2Ruby::Entity
     extend Cplus2Ruby::Entity
+    ann! :__options__, hash 
+    ann! :__options__, :order => Cplus2Ruby.model.next_order_cnt if hash[:order].nil?
   end
 end

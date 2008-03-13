@@ -102,6 +102,7 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
     out << "  VALUE klass;\n"
 
     @model.entities_ordered.each do |klass| 
+      next if no_wrap?(klass)
       n = klass.name
       out << %{  klass = rb_eval_string("#{n}");\n}
       out << %{  rb_define_alloc_func(klass, #{n}_alloc__);\n}
@@ -136,10 +137,12 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
     out << %{#include "#{mod_name}.h"\n\n}
 
     @model.entities_ordered.each do |klass| 
+      next if no_wrap?(klass)
+
       out << gen_allocator(klass)
 
       all_methods_of(klass) do |name, options|
-        out << gen_method_wrapper(klass, name, options)
+        out << (gen_method_wrapper(klass, name, options) || "")
       end
 
       all_properties_of(klass) do |name, options|

@@ -16,15 +16,23 @@ class Cplus2Ruby::CodeGenerator
     File.open(file, 'w+') {|out| out.puts str}
   end
 
+  def no_wrap?(klass)
+    (klass.local_annotations[:__options__] || {})[:no_wrap]
+  end
+
+  def wrap?(klass)
+    not no_wrap?(klass)
+  end
+
   def all_properties_of(klass)
-    klass.annotations.each do |name, options|
+    klass.local_annotations.each do |name, options|
       next if options[:class] != Cplus2Ruby::Property
       yield name, options
     end
   end
 
   def all_methods_of(klass)
-    klass.annotations.each do |name, options|
+    klass.local_annotations.each do |name, options|
       next if options[:class] != Cplus2Ruby::Method
       yield name, options
     end

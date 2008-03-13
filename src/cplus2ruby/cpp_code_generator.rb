@@ -66,7 +66,7 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
       init = @model.typing.lookup_entry(:init, options, options[:type])
       stmts << @model.typing.var_assgn("this->#{name}", init) unless init.nil?
     end
-    return "" if stmts.empty?
+    #return "" if stmts.empty?
     %[
       #{klass.name}::#{klass.name}()
       {
@@ -85,16 +85,18 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
   #
   # Doesn't include the semicolon at the end.
   #
-  def gen_method_sig(klassname, name, options)
+  def gen_method_sig(klassname, name, options, is_declaration)
     args = options[:arguments].dup
     returns = args.delete(:returns) || "void"
 
     out = ""
-    out << "static " if options[:static] 
-    out << "inline " if options[:inline]
-    out << "virtual " if options[:virtual]
+    if is_declaration
+      out << "static " if options[:static] 
+      out << "inline " if options[:inline]
+      out << "virtual " if options[:virtual]
+    end
     out << @model.typing.var_decl(returns, "")
-    out << "\n"
+    out << " "
 
     s = args.map {|aname, atype| @model.typing.var_decl(atype, aname) }.join(", ")
 
@@ -107,8 +109,8 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
     "{\n" + (options[:body] || "") + "}\n"
   end
 
-  def gen_method(klassname, name, options, include_body)
-    str = gen_method_sig(klassname, name, options)
+  def gen_method(klassname, name, options, include_body, is_declaration)
+    str = gen_method_sig(klassname, name, options, is_declaration)
     str << gen_method_body(options) if include_body
     str
   end
@@ -140,37 +142,49 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
     }
 
     all_methods_of(klass) {|name, options|
-      stmts << gen_method(nil, name, options, options[:inline])
+      stmts << gen_method(nil, name, options, options[:inline], true)
     }
        
-    %[
-      struct #{klass.name} : #{sc}
-      {
-        typedef #{sc} super;
+    if no_wrap?(klass)
+      %[
+        struct #{klass.name} 
+        {
+          #{stmts.join("; \n")};
+        };
+      ]
+    else
+      %[
+        struct #{klass.name} : #{sc}
+        {
+          typedef #{sc} super;
 
-        #{klass.name}();
+          #{klass.name}();
 
-        #{m[:free]}
-        #{m[:mark]}
-        
-        #{stmts.join("; \n")};
-      };
-    ]
+          #{m[:free]}
+          #{m[:mark]}
+          
+          #{stmts.join("; \n")};
+        };
+      ]
+    end
   end
 
   def gen_class_impl(klass)
     # FIXME: helper_codes
 
     stmts = [] 
-    stmts << gen_constructor(klass)
 
-    [:free, :mark].each {|kind| 
-      stmts << gen_free_or_mark_method(klass, kind)
-    }
+    if wrap?(klass)
+      stmts << gen_constructor(klass)
+
+      [:free, :mark].each {|kind| 
+        stmts << gen_free_or_mark_method(klass, kind)
+      }
+    end
 
     all_methods_of(klass) do |name, options|
       next if options[:inline]
-      stmts << gen_method(klass.name, name, options, true)
+      stmts << gen_method(klass.name, name, options, true, false)
     end
 
     stmts.join("\n")
