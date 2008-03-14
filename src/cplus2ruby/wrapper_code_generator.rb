@@ -40,10 +40,12 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
   #
   def gen_wrapper(klass, name, options, kind)
     args = options[:arguments].dup
+    return nil if options[:stub]
     unless args_convertable?(args)
       STDERR.puts "WARN: cannot wrap method #{klass.name}::#{name} (#{kind})"
       return nil
     end
+
     returns = args.delete(:returns) || "void"
 
     s = ([["__self__", "VALUE"]] + args.to_a).map {|n,_| "VALUE #{n}"}.join(", ")
@@ -110,6 +112,7 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
       all_methods_of(klass) do |name, options|
         args = options[:arguments]
         next unless args_convertable?(args)
+        next if options[:stub]
         out << %{  rb_define_method(klass, "#{name}", } 
         out << %{(VALUE(*)(...))#{n}_wrap__#{name}, #{arity(args)});\n}
       end
@@ -158,15 +161,5 @@ class Cplus2Ruby::WrapperCodeGenerator < Cplus2Ruby::CodeGenerator
   def write_files(mod_name)
     write_out(mod_name + "_wrap.cc", gen_wrapper_file(mod_name))
   end
-
-  protected
-
-  def args_convertable?(args)
-    args.all? {|_, type| @model.typing.can_convert?(type) }
-  end
-
-  def arity(args)
-    args.size - (args.include?(:returns) ? 1 : 0)
-  end 
 
 end

@@ -37,4 +37,13 @@ class Cplus2Ruby::CodeGenerator
       yield name, options
     end
   end
+
+  def args_convertable?(args)
+    args.all? {|_, type| @model.typing.can_convert?(type) }
+  end
+
+  def arity(args)
+    args.size - (args.include?(:returns) ? 1 : 0)
+  end 
+
 end

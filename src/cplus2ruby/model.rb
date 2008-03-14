@@ -147,6 +147,12 @@ module Cplus2Ruby::Entity
     ann! name, Cplus2Ruby::Method, options 
   end
 
+  def stub_method(name, *args)
+    options = parse_method_args(args)
+    options[:stub] = true
+    ann! name, Cplus2Ruby::Method, options 
+  end
+
   alias method_c method
 
   def virtual(*virtuals)

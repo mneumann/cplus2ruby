@@ -104,13 +104,53 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
     return out
   end
 
-  def gen_method_body(options)
-    "{\n" + (options[:body] || @model.settings[:default_body_when_nil]) + "}\n"
+  def gen_method_body(klassname, name, options)
+    if options[:stub]
+      gen_stub_method(klassname, name, options)
+    else
+      "{\n" + (options[:body] || @model.settings[:default_body_when_nil]) + "}\n"
+    end
+  end
+
+  #
+  # Generates a C++ method that forwards the call to the Ruby method
+  # of the same name.
+  #
+  def gen_stub_method(klassname, name, options)
+    raise "Stub method with body is invalid!" if options[:body]
+
+    args = options[:arguments].dup
+    unless args_convertable?(args)
+      raise "ERROR: Cannot convert stub method #{klassname}::#{name}"
+    end
+
+    returns = args.delete(:returns) || "void"
+
+    out = ""
+    out << "{\n"
+    out << "VALUE __res__ = " if returns != 'void'
+
+    # TODO: move rb_intern out
+    call_args = ["@__obj__", %{rb_intern("#{name}")}, args.size] + 
+      args.map {|n, k| @model.typing.convert(k, n, :c2ruby) }
+
+    out << %{rb_funcall(#{call_args.join(', ')});}
+
+    # check return type
+    if returns != 'void' 
+      out << @model.typing.convert(returns, '__res__', :ruby2c_checktype)
+      retval = @model.typing.convert(returns, '__res__', :ruby2c) 
+      out << "return #{retval};\n"
+    end
+
+    out << "}\n"
+
+    return out
   end
 
   def gen_method(klassname, name, options, include_body, is_declaration)
     str = gen_method_sig(klassname, name, options, is_declaration)
-    str << gen_method_body(options) if include_body
+    str << gen_method_body(klassname, name, options) if include_body
     str
   end
 
