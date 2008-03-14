@@ -13,23 +13,27 @@ LICENSE
 
 ABOUT
 
-  With Cplus2Ruby you can define your own C++ classes or C structures
-  from within Ruby and wrap them in a Ruby class. 
-  Cplus2Ruby will automatically generate getter and setter methods for
-  properties, as well as wrapper functions for calling your C++ methods
-  from within Ruby. 
+  Cplus2Ruby (or "C++Ruby") makes it easy to mix Ruby and C++ in
+  a seamless way. You can use the power of the Ruby object model
+  and where needed switch to C++ methods for ultimate performance!
 
-  The purpose is speed, because accessing instance variables in Ruby is
-  quite slow compared to accessing an C++ attribute. Also, C++ methods can
-  call each other directly, without using Ruby's slow method dispatch.
-  This is *much* faster!
+  Cplus2Ruby generates getter and setter methods for C++ properties,
+  and wrapper methods so that you can call your C++ methods from
+  Ruby without writing a single line of C++ wrapper code. In the same
+  way stub methods enable your C++ methods to directly call a Ruby
+  method.
 
-  I started to write Cplus2Ruby (it was actually called CplusRuby at
-  that time, because it was based on C, not C++) to implement a
-  high-performance pulsed neural network simulator. My existing C++
-  implementation suffered from - well - C++ :). This enabled me to write
-  the core algorithms in C or C++ and do all the other non
-  performance-critical tasks in Ruby.
+  As mentioned above shortly, the main purpose of Cplus2Ruby is speed.
+  Accessing instance variables in Ruby is somewhat slow compared to
+  accessing an C++ attribute. Calling a C++ method is as well *a lot*
+  faster than calling a Ruby method. Cplus2Ruby now allows you to
+  write your performance critical methods in C++, which can call other
+  C++ methods and access C++ attributes with native C++ performance.
+
+DEPENDENCIES
+
+  * gem install facets
+  * Ruby 1.8.x
 
 EXAMPLE
 
@@ -40,45 +44,44 @@ EXAMPLE
   quite slow in Ruby, method defined in C++ ("method") can be called
   directly from C++, which again is very fast! 
 
-  Note that the example below uses Ruby 1.9 syntax for hashes and as
-  such does not run with Ruby 1.8. Hashes in Ruby 1.9 maintain order,
-  with is not true in Ruby 1.8, so that you have to replace a single
-  Hash that describes the signature of a C++ method with multiple Hashes,
-  one for each argument:
-
-    # Ruby >= 1.9
-    {at: 'float', weight: 'float'}
-
-    # Ruby < 1.9
-    {:at => 'float'}, {:weight => 'float'}
-
-  The example:
-
+    $LOAD_PATH.unshift './src'
+    require 'rubygems'
     require 'cplus2ruby'
 
-    class NeuralEntity < CplusRuby_
+    class NeuralEntity; cplus2ruby
       property :id
     end
 
     class Neuron < NeuralEntity
-      property :potential,        :float
-      property :last_spike_time,  :float
+      property :potential,       :float
+      property :last_spike_time, :float
       property :pre_synapses
 
-      method :stimulate, {at: 'float', weight: 'float'}, %{
-        /* this is C code */
+      method :stimulate, {:at => :float},{:weight => :float}, %{
+        // This is C++ Code
         @potential += at*weight;
+
+        // call a Ruby method
+        log(@potential);
       }
+
+      stub_method :log, {:pot => :float}
+
+      def log(pot)
+        puts "log(#{pot})"
+      end
 
       def initialize
         self.pre_synapses = []
       end
     end
 
-    # generate C file, compile it and load the .so
-    CplusRuby.compile_and_load("work/neural")
-
     if __FILE__ == $0
+      #
+      # Generate C++ code, compile and load shared library. 
+      #
+      Cplus2Ruby.startup('work/neural') 
+
       n = Neuron.new
       n.id = "n1"
       n.potential = 1.0
@@ -86,11 +89,115 @@ EXAMPLE
       p n.potential # => 3.0
     end
 
-NOTE
+FEATURES
 
   You can disable the substitution of "@" to "this->" in the generated
   C++ source code with:
 
       Cplus2Ruby.settings :substitute_iv_ats => false
+
+  A method signature to return a value (in our case an integer) looks like:
+
+    method :abc, {:arg1 => :int}, {:arg2 => :float}, {:returns => :int}, %{
+      ...
+    }
+
+  Mixins can be used:
+
+    module Mixin; cplus2ruby
+      property :a
+    end
+
+    class C; cplus2ruby
+      include Mixin
+    end
+
+  They don't generate a C++ class, instead get inline into the class
+  into which they are mixed in.
+
+  You can use type aliases:
+
+    Cplus2Ruby.add_type_alias 'MyIntegerType' => 'unsigned int'
+
+  After that Cplus2Ruby knows about this type and how to convert it
+  (if it knows how to convert the 'unsigned int' type) and you can
+  use it wherever you want.
+
+  Inline, static and virtual methods can be declared like this:
+
+    method :abc, {:a1 => :int}, %{
+      body
+    }, :inline => true, :static => true, :virtual => true
+
+  There is also a static_method short-cut for static methods, so instead
+  of:
+
+    method :abc, {:a1 => :int}, %{
+      ...
+    }, :static => true
+  
+  you can write:
+
+    static_method :abc, {:a1 => :int}, %{
+      ...
+    }
+ 
+  To mark a method in a class hierarchy forever as virtual, you can 
+  write: 
+
+    virtual :method1, :method2
+
+  You can also define a class that is purely used from within C++.
+  If you don't want to generate wrapper code etc. specify:
+
+    cplus2ruby :no_wrap => true
+
+  You can use Strings, Symbols and Classes for types in signatures or
+  in property declarations. There is no distinction between Strings and
+  Symbols. If you specify a class, it must be known to Cplus2Ruby,
+  either explicitly:
+
+    class A
+      cplus2ruby # marks it known to Cplus2Ruby
+    end
+
+  Or using inheritance:
+
+    class A
+      cplus2ruby # marks it known to Cplus2Ruby
+    end
+
+    class B < A  # implicit by inheritance
+    end
+
+  Global code (mostly type declarations etc.) can be added as shown
+  below:
+
+    Cplus2Ruby << %q{
+      #include <assert.h>
+      #include <math.h>
+
+      #define real_exp expf
+      #define real_fabs fabsf
+
+      #define THROW(str) rb_raise(rb_eRuntimeError, str)
+    }
+
+  Compilation flags etc.:
+
+    Cplus2Ruby.startup(module_name, force_compilation, cflags, ldflags) 
+
+  For example:
+
+    #
+    # force_compilation => true regenerates and recompiles the 
+    # C++ code every time.
+    #
+    Cplus2Ruby.startup("work/mymodule", true, '-DNDEBUG -Winline -Wall', '-lm') 
+
+BUGS
+
+  * Cplus2Ruby doesn't work yet under Ruby 1.9. This is probably due to
+    a problem in facets/annotations.
 
 END 
