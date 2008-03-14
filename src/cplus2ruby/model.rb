@@ -81,7 +81,8 @@ class Cplus2Ruby::Model
 
   def default_settings
     {
-      :substitute_iv_ats => true
+      :substitute_iv_ats => true,
+      :default_body_when_nil => ''
     }
   end
 

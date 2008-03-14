@@ -50,12 +50,11 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
   def gen_free_or_mark_method(klass, kind)
     stmts = stmts_for_free_or_mark_method(klass, kind)
     return "" if stmts.empty?
+    stmts << "super::__#{kind}__()"
     %[
-      void
-      #{klass.name}::__#{kind}__()
+      void #{klass.name}::__#{kind}__()
       {
         #{stmts.join(";\n")};
-        super::__#{kind}__();
       }
     ]
   end
@@ -106,7 +105,7 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
   end
 
   def gen_method_body(options)
-    "{\n" + (options[:body] || "") + "}\n"
+    "{\n" + (options[:body] || @model.settings[:default_body_when_nil]) + "}\n"
   end
 
   def gen_method(klassname, name, options, include_body, is_declaration)
