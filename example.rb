@@ -1,5 +1,5 @@
 require 'rubygems'
-$LOAD_PATH.unshift './src'
+$LOAD_PATH.unshift './lib'
 require 'cplus2ruby'
 
 class NeuralEntity; cplus2ruby

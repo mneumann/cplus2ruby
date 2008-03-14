@@ -44,7 +44,7 @@ EXAMPLE
   quite slow in Ruby, method defined in C++ ("method") can be called
   directly from C++, which again is very fast! 
 
-    $LOAD_PATH.unshift './src'
+    $LOAD_PATH.unshift './lib'
     require 'rubygems'
     require 'cplus2ruby'
 
