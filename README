@@ -30,10 +30,15 @@ ABOUT
   write your performance critical methods in C++, which can call other
   C++ methods and access C++ attributes with native C++ performance.
 
+INSTALLATION
+
+  gem install cplus2ruby
+
 DEPENDENCIES
 
   * gem install facets
   * Ruby 1.8.x
+  * C++ compiler and make
 
 EXAMPLE
 
