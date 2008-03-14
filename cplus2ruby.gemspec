@@ -10,7 +10,7 @@ spec = Gem::Specification.new do |s|
   s.author = "Michael Neumann"
   s.email = "mneumann@ntecs.de"
   s.homepage = "http://www.ntecs.de/projects/cplus2ruby/"
-  #s.rubyforge_project = "wee"
+  s.rubyforge_project = "cplus2ruby"
 end
 
 if __FILE__ == $0

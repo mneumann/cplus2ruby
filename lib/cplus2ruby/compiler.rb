@@ -45,15 +45,15 @@ class Cplus2Ruby::Compiler
     make = RUBY_PLATFORM.match('mswin') ? 'nmake' : 'make'
 
     Dir.chdir(n[:dir]) do
-      write_files(n[:mod])
       system("#{make} clean") if File.exist?('Makefile')
+      write_files(n[:mod])
 
       pid = fork do
         require 'mkmf'
         $CFLAGS = cflags
         $LIBS << (" -lstdc++ " + libs)
         create_makefile(n[:mod])
-        system "#{make}" # exec
+        exec "#{make}"
       end
       _, status = Process.waitpid2(pid)
 
