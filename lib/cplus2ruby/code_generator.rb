@@ -39,7 +39,10 @@ class Cplus2Ruby::CodeGenerator
   end
 
   def args_convertable?(args)
-    args.all? {|_, type| @model.typing.can_convert?(type) }
+    #FIXME: Facets 2.3.0 has a bug in Dictionary#all?
+    ##args.all? {|_, type| @model.typing.can_convert?(type) }
+    args.each {|_, type| return false unless @model.typing.can_convert?(type) }
+    return true
   end
 
   def arity(args)
