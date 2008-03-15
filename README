@@ -46,7 +46,7 @@ EXAMPLE
   at the generated C++ source file (work/*.cc). Note that properties
   are actually members of a C++ class, not instance variables, and as
   such, their access from C++ is very fast. As calling a method is
-  quite slow in Ruby, method defined in C++ ("method") can be called
+  quite slow in Ruby, a method defined in C++ ("method") can be called
   directly from C++, which again is very fast! 
 
     $LOAD_PATH.unshift './lib'
@@ -117,7 +117,7 @@ FEATURES
       include Mixin
     end
 
-  They don't generate a C++ class, instead get inline into the class
+  They don't generate a C++ class, instead get inlined into the class
   into which they are mixed in.
 
   You can use type aliases:
@@ -204,5 +204,11 @@ BUGS
 
   * Cplus2Ruby doesn't work yet under Ruby 1.9. This is probably due to
     a problem in facets/annotations.
+
+  * I get an "illegal instruction" (sig 4) when the C++ code is compiled
+    with -pthread. This is the default in the ports on FreeBSD 7.0 even 
+    when WITH_PTHREAD is defined. It is somehow related to the GC, 
+    because when I disable the GC everything is fine (except memory
+    usage :).
 
 END 
