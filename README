@@ -37,7 +37,6 @@ INSTALLATION
 DEPENDENCIES
 
   * gem install facets
-  * Ruby 1.8.x
   * C++ compiler and make
 
 EXAMPLE
