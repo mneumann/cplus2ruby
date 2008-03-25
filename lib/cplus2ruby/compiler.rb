@@ -13,7 +13,7 @@ class Cplus2Ruby::Compiler
     wrap_cg.write_files(mod_name)
   end
 
-  def startup(file, force_compilation=false, cflags="", libs="", &block) 
+  def commit(file, force_compilation=false, cflags="", libs="", &block) 
     n = names(file)
 
     if not force_compilation
@@ -29,6 +29,8 @@ class Cplus2Ruby::Compiler
     require n[:ld]
     block.call if block
   end
+
+  alias startup commit
 
   #
   # Compiles +file+. Returns the name of the shared object to

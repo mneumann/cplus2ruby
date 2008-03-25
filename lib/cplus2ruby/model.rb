@@ -114,9 +114,13 @@ module Cplus2Ruby
     h.each {|from, to| model.typing.alias_entry(from, to)}
   end
 
-  def self.startup(*args, &block)
+  def self.commit(*args, &block)
     self.model.finish!
-    Cplus2Ruby::Compiler.new(self.model).startup(*args, &block)
+    Cplus2Ruby::Compiler.new(self.model).commit(*args, &block)
+  end
+
+  def self.startup(*args, &block)
+    commit(*args, &block)
   end
 
   def self.compile(*args)
