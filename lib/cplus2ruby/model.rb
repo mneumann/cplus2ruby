@@ -45,27 +45,34 @@ class Cplus2Ruby::Model
     usage_cnt
   end
 
-  def entities_ordered
-    entities().sort {|a, b|
-      if a.ancestors.include?(b)
-        # a 'after' b (a > b)
-        1
-      elsif b.ancestors.include?(a)
-        -1
-      else
-        ea = entity_usage(a, b)
-        eb = entity_usage(b, a)
+  def cmp_entities(a,b)
+    if a.ancestors.include?(b)
+      # a 'after' b (a > b)
+      1
+    elsif b.ancestors.include?(a)
+      -1
+    else
+      ea = entity_usage(a, b)
+      eb = entity_usage(b, a)
 
-        if ea > 0 and eb == 0
-          -1
-        elsif eb > 0 and ea == 0 
-          1
-        else
-          ao = (a.heritage(:__options__) || {})[:order] || 0
-          bo = (b.heritage(:__options__) || {})[:order] || 0
-          ao <=> bo
-        end
+      if ea > 0 and eb == 0
+        -1
+      elsif eb > 0 and ea == 0 
+        1
+      else
+        ao = (a.heritage(:__options__) || {})[:order] || 0
+        bo = (b.heritage(:__options__) || {})[:order] || 0
+        ao <=> bo
       end
+    end
+  end
+
+  def entities_ordered
+    ents = entities()
+    ents.sort_by {|entity|
+      ents.inject(0) {|accum, e|
+        accum + (cmp_entities(entity, e) == 1 ? 1 : 0)
+      }
     }
   end
 

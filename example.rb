@@ -34,7 +34,7 @@ if __FILE__ == $0
   #
   # Generate C++ code, compile and load shared library. 
   #
-  Cplus2Ruby.startup('work/neural') 
+  Cplus2Ruby.commit('work/neural') 
 
   n = Neuron.new
   n.id = "n1"

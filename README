@@ -84,7 +84,7 @@ EXAMPLE
       #
       # Generate C++ code, compile and load shared library. 
       #
-      Cplus2Ruby.startup('work/neural') 
+      Cplus2Ruby.commit('work/neural') 
 
       n = Neuron.new
       n.id = "n1"
@@ -189,7 +189,7 @@ FEATURES
 
   Compilation flags etc.:
 
-    Cplus2Ruby.startup(module_name, force_compilation, cflags, ldflags) 
+    Cplus2Ruby.commit(module_name, force_compilation, cflags, ldflags) 
 
   For example:
 
@@ -197,7 +197,7 @@ FEATURES
     # force_compilation => true regenerates and recompiles the 
     # C++ code every time.
     #
-    Cplus2Ruby.startup("work/mymodule", true, '-DNDEBUG -Winline -Wall', '-lm') 
+    Cplus2Ruby.commit("work/mymodule", true, '-DNDEBUG -Winline -Wall', '-lm') 
 
 BUGS
 
