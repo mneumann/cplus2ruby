@@ -46,7 +46,9 @@ class Cplus2Ruby::CodeGenerator
   end
 
   def arity(args)
-    args.size - (args.include?(:returns) ? 1 : 0)
+    # FIXME: Facets 2.3.0 has a bug in OrderedHash#include?
+    # (it behaves differently than Hash)
+    args.size - ((args.has_key?('returns') || args.has_key?(:returns)) ? 1 : 0)
   end 
 
 end
