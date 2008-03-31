@@ -47,23 +47,28 @@ class Cplus2Ruby::Compiler
     make = RUBY_PLATFORM.match('mswin') ? 'nmake' : 'make'
 
     Dir.chdir(n[:dir]) do
-      system("#{make} clean") if File.exist?('Makefile')
+      if File.exist?('Makefile')
+        system("#{make} clean") 
+        File.delete('Makefile')
+      end
       write_files(n[:mod])
+    end
 
-      pid = fork do
-        require 'mkmf'
-        $CFLAGS = cflags
-        $LIBS << (" -lstdc++ " + libs)
-        create_makefile(n[:mod])
-        exec "#{make}"
-      end
-      _, status = Process.waitpid2(pid)
+    pid = fork do
+      Dir.chdir(n[:dir])
+      $configure_args = {"--srcdir" => Dir.pwd}
+      require 'mkmf'
+      $CFLAGS = cflags
+      $LIBS << (" -lstdc++ " + libs)
+      create_makefile(n[:mod])
+      exec "#{make}"
+    end
+    _, status = Process.waitpid2(pid)
 
-      if RUBY_PLATFORM.match('mswin')
-        raise if status != 0
-      else
-        raise if status.exitstatus != 0
-      end
+    if RUBY_PLATFORM.match('mswin')
+      raise if status != 0
+    else
+      raise if status.exitstatus != 0
     end
 
     return n[:ld]

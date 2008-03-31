@@ -2,10 +2,12 @@ require 'rubygems'
 
 spec = Gem::Specification.new do |s|
   s.name = "cplus2ruby"
-  s.version = "1.1.0"
+  s.version = "1.1.1"
   s.summary = "Gluing C++ and Ruby together in an OO manner"
   s.files = Dir['**/*']
   s.add_dependency('facets', '>= 2.3.0')
+  s.requirements << "On Window: gem win32-process"
+  s.requirements << "C++ compiler and make"
 
   s.author = "Michael Neumann"
   s.email = "mneumann@ntecs.de"
