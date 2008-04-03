@@ -25,9 +25,10 @@ class Cplus2Ruby::CodeGenerator
   end
 
   def all_properties_of(klass)
-    klass.local_annotations.each do |name, options|
-      next if options[:class] != Cplus2Ruby::Property
-      yield name, options
+    klass.local_annotations.sort_by {|name, options| options[:order] || 0}.
+      each do |name, options|
+        next if options[:class] != Cplus2Ruby::Property
+        yield name, options
     end
   end
 

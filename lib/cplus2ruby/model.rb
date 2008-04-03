@@ -14,12 +14,17 @@ class Cplus2Ruby::Model
     @order_cnt += 1
   end
 
+  def next_prop_cnt
+    @prop_cnt += 1
+  end
+
   def initialize
     @typing = Cplus2Ruby::Typing.new
     @code = ""
     @includes = []
     @settings = default_settings()
     @order_cnt = 0
+    @prop_cnt = 0
   end
 
   def finish!
@@ -140,7 +145,8 @@ end
 module Cplus2Ruby::Entity
   def property(name, type=Object, options={})
     raise ArgumentError if options[:type]
-    options[:type] = type
+    options[:type] = type || Object
+    options[:order] = Cplus2Ruby.model.next_prop_cnt 
     ann! name, Cplus2Ruby::Property, options
   end
 

@@ -50,7 +50,7 @@ class Cplus2Ruby::CppCodeGenerator < Cplus2Ruby::CodeGenerator
   def gen_free_or_mark_method(klass, kind)
     stmts = stmts_for_free_or_mark_method(klass, kind)
     return "" if stmts.empty?
-    stmts << "super::__#{kind}__()"
+    stmts.unshift("super::__#{kind}__()")
     %[
       void #{klass.name}::__#{kind}__()
       {

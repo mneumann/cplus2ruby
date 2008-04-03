@@ -2,7 +2,7 @@ require 'rubygems'
 
 spec = Gem::Specification.new do |s|
   s.name = "cplus2ruby"
-  s.version = "1.1.2"
+  s.version = "1.2.0"
   s.summary = "Gluing C++ and Ruby together in an OO manner"
   s.files = Dir['**/*']
   s.add_dependency('facets', '>= 2.3.0')
